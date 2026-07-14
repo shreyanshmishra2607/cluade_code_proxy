@@ -1,0 +1,44 @@
+{
+    "nvidia": {
+        "name": "NVIDIA GLM-5.2 (Free)",
+        "env_key": "NVIDIA_API_KEY",
+        "litellm_provider": "nvidia_nim",
+        "model_id": "z-ai/glm-5.2",
+        "base_url": "https://integrate.api.nvidia.com/v1"
+    },
+    "gemini": {
+        "name": "Google Gemini 2.5 Flash (Free tier)",
+        "env_key": "GEMINI_API_KEY",
+        "litellm_provider": "gemini",
+        "model_id": "gemini-2.5-flash",
+        "base_url": null
+    },
+    "gpt": {
+        "name": "OpenAI GPT-4o",
+        "env_key": "OPENAI_API_KEY",
+        "litellm_provider": "openai",
+        "model_id": "gpt-4o",
+        "base_url": null
+    },
+    "groq": {
+        "name": "Groq Llama 3.3 70B (Free tier)",
+        "env_key": "GROQ_API_KEY",
+        "litellm_provider": "groq",
+        "model_id": "llama-3.3-70b-versatile",
+        "base_url": null
+    },
+    "deepseek": {
+        "name": "DeepSeek Chat",
+        "env_key": "DEEPSEEK_API_KEY",
+        "litellm_provider": "deepseek",
+        "model_id": "deepseek-chat",
+        "base_url": null
+    },
+    "mistral": {
+        "name": "Mistral Large",
+        "env_key": "MISTRAL_API_KEY",
+        "litellm_provider": "mistral",
+        "model_id": "mistral-large-latest",
+        "base_url": null
+    }
+}
