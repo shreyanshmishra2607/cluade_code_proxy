@@ -42,13 +42,34 @@ if (-not $hasKey) {
 }
 
 # Generate litellm_config.yaml
+# Includes Claude model name aliases so the VS Code extension works too
+# (The extension sends claude-opus-5, claude-sonnet-4-5, etc. regardless of env vars)
+$litellmParams = @"
+      model: "$provider/$modelId"
+      api_key: "os.environ/$envKey"
+      additional_drop_params: ["reasoning", "reasoning.effort", "reasoning_effort"]
+"@
+
+$claudeAliases = @(
+    "claude-opus-5", "claude-opus-4",
+    "claude-sonnet-4-5", "claude-sonnet-4",
+    "claude-haiku-4",
+    "claude-3-5-sonnet-20241022", "claude-3-5-sonnet-latest",
+    "claude-3-5-haiku-20241022",  "claude-3-5-haiku-latest",
+    "claude-3-opus-20240229",     "claude-3-opus-latest",
+    "claude-3-sonnet-20240229",   "claude-3-haiku-20240307"
+)
+
+$aliasEntries = ($claudeAliases | ForEach-Object {
+    "  - model_name: `"$_`"`n    litellm_params:`n$litellmParams"
+}) -join "`n"
+
 $yamlContent = @"
 model_list:
   - model_name: "$modelId"
     litellm_params:
-      model: "$provider/$modelId"
-      api_key: "os.environ/$envKey"
-      additional_drop_params: ["reasoning", "reasoning.effort", "reasoning_effort"]
+$litellmParams
+$aliasEntries
 
 litellm_settings:
   drop_params: true
@@ -72,9 +93,17 @@ Set-Content "$configDir\start_proxy.bat" $batContent
 Set-Content "$configDir\active_model.txt" $ModelName
 Set-Content "$configDir\active_model_id.txt" $modelId
 
+# Persist env vars at USER level so VS Code extension (and any GUI app) picks them up
+# without needing a terminal session
+[Environment]::SetEnvironmentVariable("ANTHROPIC_BASE_URL",              "http://127.0.0.1:4000",                   "User")
+[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY",               "sk-ant-api03-LOCAL-PROXY-PLACEHOLDER",    "User")
+[Environment]::SetEnvironmentVariable("ANTHROPIC_DEFAULT_SONNET_MODEL",  $modelId,                                  "User")
+[Environment]::SetEnvironmentVariable("ANTHROPIC_DEFAULT_OPUS_MODEL",    $modelId,                                  "User")
+[Environment]::SetEnvironmentVariable("ANTHROPIC_DEFAULT_HAIKU_MODEL",   $modelId,                                  "User")
+
 Write-Host ""
 Write-Host "Switched to: $($model.name)" -ForegroundColor Green
 Write-Host "Model ID:    $modelId" -ForegroundColor Cyan
 Write-Host "Provider:    $provider" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Ready! Run 'claudep' to start with the new model." -ForegroundColor Green
+Write-Host "Ready! Run 'claudep' or open VS Code - proxy env vars updated globally." -ForegroundColor Green
