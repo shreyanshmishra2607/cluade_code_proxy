@@ -77,6 +77,9 @@ litellm_settings:
 
 Set-Content "$configDir\litellm_config.yaml" $yamlContent
 
+# Terminate old proxy instance so next run loads fresh config
+Stop-Process -Name litellm -Force -ErrorAction SilentlyContinue
+
 # Generate start_proxy.bat
 $batContent = @"
 @echo off
