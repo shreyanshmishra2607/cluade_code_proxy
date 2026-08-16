@@ -9,11 +9,12 @@ Use **Claude Code** with any LLM provider — NVIDIA NIM, Google Gemini, OpenAI 
 ## ✨ Features
 
 - **One-command install** — run `.\install.ps1` and you're done.
-- **Global commands** — `claudep` and `switch-model` work from *any* folder.
+- **Global commands** — `claudep`, `switch-model`, `proxy-on`, `proxy-off` work from *any* folder.
 - **Non-invasive** — the real `claude` command is untouched.
 - **Auto proxy lifecycle** — the proxy boots when you run `claudep` and dies when you close the terminal.
 - **Instant model switching** — swap models without editing config files or restarting the terminal.
 - **Custom model override** — pass any model ID directly (e.g. `switch-model gpt gpt-5.5-pro`).
+- **VS Code extension support** — use the Claude Code VS Code GUI with your proxy via `proxy-on`.
 - **Key management** — prompts for an API key only if it's missing, then saves it to `.env`.
 - **List available models** — query your provider's API to see what models your key supports.
 
@@ -89,10 +90,48 @@ These work from **any PowerShell terminal**, in any folder.
 
 | Command | What it does |
 |---|---|
-| `claudep` | Auto-starts the proxy and launches Claude Code via proxy |
-| `claude` | Runs the real Claude CLI directly (no proxy, official API) |
-| `switch-model <name> [model_id]` | Switches the active provider. Optionally override the model ID (e.g. `switch-model gpt gpt-5.5-pro`). Profile reloads automatically — no terminal restart needed. |
+| `claudep` | Auto-starts the proxy and launches Claude Code in terminal |
+| `claude` | Runs the real Claude CLI directly (no proxy, official Anthropic API) |
+| `switch-model <name> [model_id]` | Switches provider and optionally overrides model ID. Auto-reloads profile. |
+| `proxy-on` | Enables proxy for the VS Code extension — click the Claude icon without login |
+| `proxy-off` | Disables proxy for VS Code — extension goes back to real Claude login |
 | `claudep-setup` | Re-registers the proxy folder if you moved it |
+
+---
+
+## 🖥️ VS Code Extension Support
+
+The Claude Code VS Code extension can also use your proxy, so you can click the Claude icon without logging in.
+
+### Setup (one time)
+
+**1. Enable proxy mode:**
+```powershell
+proxy-on
+```
+This permanently saves the proxy env vars at user level so VS Code picks them up.
+
+**2. Restart VS Code** (required once after `proxy-on`).
+
+**3. Start the proxy in a terminal:**
+```powershell
+claudep
+```
+
+**4. Click the Claude icon in VS Code** — it connects automatically. ✅
+
+> **Keep `claudep` running in a terminal while using VS Code.** The proxy must be alive for the extension to work.
+
+### Switching between proxy and real Claude
+
+```powershell
+# Use proxy (free/custom models via LiteLLM)
+proxy-on
+
+# Use real Claude (Opus, official Anthropic API — requires login)
+proxy-off
+```
+Restart VS Code after each switch to apply.
 
 ---
 
@@ -105,10 +144,10 @@ These work from **any PowerShell terminal**, in any folder.
 | `models.json` | Registry of all providers and their LiteLLM routing config |
 | `switch_model.ps1` | Updates config when you run `switch-model` |
 | `list_openai_models.ps1` | Lists all models available for your OpenAI API key |
-| `start_proxy.bat` | Manual fallback to start the proxy |
+| `setup_autostart.ps1` | Optional: auto-start proxy on Windows login |
 | `litellm_config.yaml` | **(Auto-generated)** Routing config for LiteLLM |
 | `active_model.txt` | **(Auto-generated)** Currently selected provider key |
-| `active_model_id.txt` | **(Auto-generated)** Currently active model ID (reflects custom overrides) |
+| `active_model_id.txt` | **(Auto-generated)** Currently active model ID |
 | `.env` | **(Git-ignored)** Your private API keys |
 
 ---
@@ -133,6 +172,13 @@ Removes the global commands from your PowerShell profile. Your API keys in `.env
 ---
 
 ## 🆘 Troubleshooting
+
+### VS Code extension shows API error after `proxy-on`
+The proxy isn't running. Start it first:
+```powershell
+claudep
+```
+Then try the extension again.
 
 ### Proxy won't start
 ```powershell
@@ -168,8 +214,9 @@ claudep
 1. `install.ps1` saves this folder's path to `~/.claude_proxy_path` and injects functions into your PowerShell `$PROFILE`.
 2. When you type `claudep`, it reads the active model ID from `active_model_id.txt`, loads your `.env` keys, boots LiteLLM on port 4000, and launches Claude Code.
 3. The proxy is attached to the terminal's console — when the terminal closes, the proxy stops. No orphaned processes.
-4. `switch-model <name> [model_id]` rewrites `litellm_config.yaml`, saves the actual model ID to `active_model_id.txt`, and auto-reloads your profile — all in one step.
-5. The real `claude` command is never touched — you can use it normally with an official Anthropic API key.
+4. `switch-model <name> [model_id]` rewrites `litellm_config.yaml` with your model + all Claude model name aliases, saves the model ID, sets user-level env vars, and auto-reloads your profile.
+5. `proxy-on` / `proxy-off` toggle permanent user-level env vars so the VS Code extension knows where to route requests.
+6. The real `claude` command is never touched — you can use it normally with an official Anthropic API key.
 
 ### ⚡ Proxy Boot Performance
 The proxy takes ~12 seconds on first boot. If you run `claudep` again while the proxy is already up (port 4000 is occupied), it skips startup and launches Claude instantly. Keep a terminal with `claudep` running to keep the proxy warm.
