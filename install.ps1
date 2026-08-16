@@ -67,6 +67,7 @@ model_list:
     litellm_params:
       model: "$($m.litellm_provider)/$($m.model_id)"
       api_key: "os.environ/$($m.env_key)"
+      additional_drop_params: ["reasoning", "reasoning.effort", "reasoning_effort"]
 
 litellm_settings:
   drop_params: true
@@ -91,9 +92,14 @@ if (Test-Path $configPointer) { $global:ClaudeConfigDir = (Get-Content $configPo
 else { $global:ClaudeConfigDir = $null }
 
 function switch-model {
-    param([string]$ModelName)
+    param(
+        [string]$ModelName,
+        [string]$CustomModelId
+    )
     if (-not $global:ClaudeConfigDir) { Write-Host "Run 'claudep-setup' first." -ForegroundColor Red; return }
-    & "$global:ClaudeConfigDir\switch_model.ps1" $ModelName
+    & "$global:ClaudeConfigDir\switch_model.ps1" $ModelName $CustomModelId
+    # Auto-reload profile so the new model is active immediately — no terminal restart needed
+    . $PROFILE
 }
 
 function claudep-setup {
@@ -110,10 +116,15 @@ function claudep {
     $env:ANTHROPIC_BASE_URL="http://127.0.0.1:4000"
     $env:ANTHROPIC_API_KEY="sk-ant-api03-LOCAL-PROXY-PLACEHOLDER"
     $env:PYTHONIOENCODING="utf-8"
-    $activeModel = Get-Content "$global:ClaudeConfigDir\active_model.txt" -ErrorAction SilentlyContinue
-    if (-not $activeModel) { $activeModel = "nvidia" }
-    $modelsJson = Get-Content "$global:ClaudeConfigDir\models.json" | ConvertFrom-Json
-    if ($modelsJson.$activeModel) { $modelId = $modelsJson.$activeModel.model_id } else { $modelId = $activeModel }
+    # Dynamically read the actual model ID from active_model_id.txt (set by switch-model)
+    $modelId = Get-Content "$global:ClaudeConfigDir\active_model_id.txt" -ErrorAction SilentlyContinue
+    if (-not $modelId) {
+        $activeModel = Get-Content "$global:ClaudeConfigDir\active_model.txt" -ErrorAction SilentlyContinue
+        if (-not $activeModel) { $activeModel = "nvidia" }
+        $modelsJson = Get-Content "$global:ClaudeConfigDir\models.json" | ConvertFrom-Json
+        if ($modelsJson.$activeModel) { $modelId = $modelsJson.$activeModel.model_id } else { $modelId = $activeModel }
+    }
+    $modelId = $modelId.Trim()
     $env:ANTHROPIC_DEFAULT_SONNET_MODEL=$modelId
     $env:ANTHROPIC_DEFAULT_OPUS_MODEL=$modelId
     $env:ANTHROPIC_DEFAULT_HAIKU_MODEL=$modelId

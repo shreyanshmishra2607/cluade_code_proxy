@@ -2,8 +2,11 @@
 # Usage: .\switch_model.ps1 nvidia | gemini | gpt | groq | deepseek | mistral
 
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$ModelName
+    [Parameter(Mandatory=$true, Position=0)]
+    [string]$ModelName,
+
+    [Parameter(Mandatory=$false, Position=1)]
+    [string]$CustomModelId
 )
 
 $configDir = $PSScriptRoot
@@ -23,6 +26,10 @@ $envKey = $model.env_key
 $provider = $model.litellm_provider
 $modelId = $model.model_id
 
+if ($CustomModelId) {
+    $modelId = $CustomModelId
+}
+
 # Check if API key exists in .env
 $envContent = Get-Content "$configDir\.env" -ErrorAction SilentlyContinue
 $hasKey = $envContent | Where-Object { $_ -match "^$envKey=" }
@@ -41,6 +48,7 @@ model_list:
     litellm_params:
       model: "$provider/$modelId"
       api_key: "os.environ/$envKey"
+      additional_drop_params: ["reasoning", "reasoning.effort", "reasoning_effort"]
 
 litellm_settings:
   drop_params: true
@@ -60,20 +68,13 @@ litellm --config litellm_config.yaml
 
 Set-Content "$configDir\start_proxy.bat" $batContent
 
-# Save active model name
+# Save provider key (e.g. "gpt") and the actual resolved model ID separately
 Set-Content "$configDir\active_model.txt" $ModelName
-
-# Update PowerShell profile model references
-$profilePath = "$env:USERPROFILE\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
-$profileContent = Get-Content $profilePath -Raw
-$profileContent = $profileContent -replace 'ANTHROPIC_DEFAULT_SONNET_MODEL="[^"]*"', "ANTHROPIC_DEFAULT_SONNET_MODEL=`"$modelId`""
-$profileContent = $profileContent -replace 'ANTHROPIC_DEFAULT_OPUS_MODEL="[^"]*"', "ANTHROPIC_DEFAULT_OPUS_MODEL=`"$modelId`""
-$profileContent = $profileContent -replace 'ANTHROPIC_DEFAULT_HAIKU_MODEL="[^"]*"', "ANTHROPIC_DEFAULT_HAIKU_MODEL=`"$modelId`""
-Set-Content $profilePath $profileContent
+Set-Content "$configDir\active_model_id.txt" $modelId
 
 Write-Host ""
 Write-Host "Switched to: $($model.name)" -ForegroundColor Green
 Write-Host "Model ID:    $modelId" -ForegroundColor Cyan
 Write-Host "Provider:    $provider" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "IMPORTANT: Restart your terminal, then type 'claude' to use the new model." -ForegroundColor Yellow
+Write-Host "Ready! Run 'claudep' to start with the new model." -ForegroundColor Green

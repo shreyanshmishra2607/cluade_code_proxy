@@ -1,3 +1,7 @@
 .env
 proxy_stderr.log
 proxy_stdout.log
+active_model_id.txt
+active_model.txt
+litellm_config.yaml
+start_proxy.bat

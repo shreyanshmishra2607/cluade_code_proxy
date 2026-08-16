@@ -1,6 +1,6 @@
 # Claude Code Multi-Model Proxy
 
-Use **Claude Code** with any LLM provider — NVIDIA NIM, Google Gemini, OpenAI GPT, Groq, DeepSeek, Mistral — by routing traffic through a local [LiteLLM](https://github.com/BerriAI/litellm) proxy. Switch models from any folder, and the proxy starts/stops automatically with your terminal.
+Use **Claude Code** with any LLM provider — NVIDIA NIM, Google Gemini, OpenAI GPT, Groq, DeepSeek, Mistral — by routing traffic through a local [LiteLLM](https://github.com/BerriAI/litellm) proxy. Switch models instantly from any folder, no terminal restart needed.
 
 > **Note:** This does NOT hijack the `claude` command. The real `claude` CLI works normally. The proxy version uses `claudep` instead.
 
@@ -10,16 +10,18 @@ Use **Claude Code** with any LLM provider — NVIDIA NIM, Google Gemini, OpenAI 
 
 - **One-command install** — run `.\install.ps1` and you're done.
 - **Global commands** — `claudep` and `switch-model` work from *any* folder.
-- **Non-invasive** — the real `claude` command is untouched. Use `claude` for official API, `claudep` for proxy.
+- **Non-invasive** — the real `claude` command is untouched.
 - **Auto proxy lifecycle** — the proxy boots when you run `claudep` and dies when you close the terminal.
-- **On-the-fly model switching** — swap providers without editing config files.
+- **Instant model switching** — swap models without editing config files or restarting the terminal.
+- **Custom model override** — pass any model ID directly (e.g. `switch-model gpt gpt-5.5-pro`).
 - **Key management** — prompts for an API key only if it's missing, then saves it to `.env`.
+- **List available models** — query your provider's API to see what models your key supports.
 
 ---
 
 ## 📋 Available Models
 
-| Command | Provider | Model | Free tier |
+| Command | Provider | Default Model | Free tier |
 |---|---|---|---|
 | `switch-model nvidia` | NVIDIA NIM | `z-ai/glm-5.2` | ✅ |
 | `switch-model gemini` | Google Gemini | `gemini-2.5-flash` | ✅ |
@@ -27,6 +29,20 @@ Use **Claude Code** with any LLM provider — NVIDIA NIM, Google Gemini, OpenAI 
 | `switch-model deepseek` | DeepSeek | `deepseek-chat` | |
 | `switch-model gpt` | OpenAI | `gpt-4o` | |
 | `switch-model mistral` | Mistral | `mistral-large-latest` | |
+
+### 🔮 Using Custom Models
+
+List all models available for your OpenAI API key:
+```powershell
+.\list_openai_models.ps1
+```
+
+Once you have a model ID, pass it as a second argument — **no restart needed**, takes effect immediately:
+```powershell
+switch-model gpt gpt-5.5-pro
+switch-model gpt gpt-5.3-codex
+switch-model gemini gemini-1.5-pro
+```
 
 ---
 
@@ -75,7 +91,7 @@ These work from **any PowerShell terminal**, in any folder.
 |---|---|
 | `claudep` | Auto-starts the proxy and launches Claude Code via proxy |
 | `claude` | Runs the real Claude CLI directly (no proxy, official API) |
-| `switch-model <name>` | Switches the active LLM provider (e.g., `switch-model gemini`) |
+| `switch-model <name> [model_id]` | Switches the active provider. Optionally override the model ID (e.g. `switch-model gpt gpt-5.5-pro`). Profile reloads automatically — no terminal restart needed. |
 | `claudep-setup` | Re-registers the proxy folder if you moved it |
 
 ---
@@ -86,11 +102,13 @@ These work from **any PowerShell terminal**, in any folder.
 |---|---|
 | `install.ps1` | One-command installer for new users |
 | `uninstall.ps1` | Clean removal of global commands |
-| `models.json` | Registry of all models and their LiteLLM routing config |
+| `models.json` | Registry of all providers and their LiteLLM routing config |
 | `switch_model.ps1` | Updates config when you run `switch-model` |
+| `list_openai_models.ps1` | Lists all models available for your OpenAI API key |
 | `start_proxy.bat` | Manual fallback to start the proxy |
 | `litellm_config.yaml` | **(Auto-generated)** Routing config for LiteLLM |
-| `active_model.txt` | **(Auto-generated)** Currently selected model key |
+| `active_model.txt` | **(Auto-generated)** Currently selected provider key |
+| `active_model_id.txt` | **(Auto-generated)** Currently active model ID (reflects custom overrides) |
 | `.env` | **(Git-ignored)** Your private API keys |
 
 ---
@@ -126,7 +144,7 @@ Get-Content proxy_stderr.log -Tail 20
 ```
 
 ### "switch-model is not recognized"
-Your profile didn't reload. Close and reopen the terminal, or:
+Your profile didn't load. Close and reopen the terminal, or run:
 ```powershell
 . $PROFILE
 ```
@@ -140,7 +158,7 @@ If automation breaks, run things manually:
 # Terminal 2: Connect Claude
 $env:ANTHROPIC_BASE_URL="http://127.0.0.1:4000"
 $env:ANTHROPIC_API_KEY="sk-ant-api03-LOCAL-PROXY-PLACEHOLDER"
-claude
+claudep
 ```
 
 ---
@@ -148,7 +166,10 @@ claude
 ## 🔧 How It Works
 
 1. `install.ps1` saves this folder's path to `~/.claude_proxy_path` and injects functions into your PowerShell `$PROFILE`.
-2. When you type `claudep`, the function reads the path from that pointer file, loads your `.env` keys, boots LiteLLM on port 4000, and launches Claude Code.
-3. The proxy is attached to the terminal's console — when the terminal dies, the proxy dies. No orphaned processes.
-4. `switch-model` reads `models.json`, rewrites `litellm_config.yaml`, and saves your choice to `active_model.txt`.
-5. The real `claude` command is never touched — you can use it normally with an official Anthropic API key or Ollama.
+2. When you type `claudep`, it reads the active model ID from `active_model_id.txt`, loads your `.env` keys, boots LiteLLM on port 4000, and launches Claude Code.
+3. The proxy is attached to the terminal's console — when the terminal closes, the proxy stops. No orphaned processes.
+4. `switch-model <name> [model_id]` rewrites `litellm_config.yaml`, saves the actual model ID to `active_model_id.txt`, and auto-reloads your profile — all in one step.
+5. The real `claude` command is never touched — you can use it normally with an official Anthropic API key.
+
+### ⚡ Proxy Boot Performance
+The proxy takes ~12 seconds on first boot. If you run `claudep` again while the proxy is already up (port 4000 is occupied), it skips startup and launches Claude instantly. Keep a terminal with `claudep` running to keep the proxy warm.
